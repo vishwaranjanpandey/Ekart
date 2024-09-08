@@ -1,0 +1,12 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('git-checkout') {
+            steps {
+                echo 'code-checkout'
+                git branch: 'main', url: 'https://github.com/vishwaranjanpandey/Ekart.git'
+            }
+        }
+    }
+}
