@@ -1,16 +1,91 @@
 @Library ('My-shared-libraries') _
 
-pipeline {
-    agent any
+
+    pipeline {
+        agent any
+    
+    parameters {
+    choice(name: 'action', choices: 'create\ndelete', description: 'Choose create/Destroy')
+    string(name:'aws_account_ID',description:'AWS account ID',defaultValue:'339436574330')
+    string(name:'region',description:'AWS ECR region',defaultValue:'ap-south-1')
+    string(name:'ecr_RepoName',description:'name of the ECR',defaultValue:'vishwa')
+    }
+
+    
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+    }
+    environment {
+         SCANNER_HOME= tool 'sonar-scanner'
+    }
 
       stages{
+          
          
         stage('Git Checkout'){
+            when { expression {  params.action == 'create' } }
             steps{
             gitCheckout(
                 branch: "main",
                 url: "https://github.com/vishwaranjanpandey/Ekart.git"
             )
+            }
+        }
+        stage('MVN-compile'){
+            when { expression {  params.action == 'create' } }
+            steps{
+                script {
+                 mvnCompile()   
+                }
+            }
+        }
+        stage('MVN-test'){
+           when { expression  { params.action == 'create'} }
+            steps{
+                script {
+                 mvnTest()   
+                }
+            }
+        }
+        stage('static-code-analysis'){
+           when { expression  { params.action == 'create'} }
+            steps{
+                script {
+                staticCodeAnalysis()   
+                }
+            }
+        }
+        stage('MVN-package'){
+           when { expression  { params.action == 'create'} }
+            steps{
+                script {
+                 mvnPackage()   
+                }
+            }
+        }
+        stage('nexus-deploy'){
+           when { expression  { params.action == 'create'} }
+            steps{
+                script {
+                 nexusDeploy() 
+                }
+            }
+        }
+        stage('Docker_build:ECR'){
+           when { expression  { params.action == 'create'} }
+            steps{
+                script {
+                 dockerBuild("${params.aws_account_ID}","${params.region}","${params.ecr_RepoName}") 
+                }
+            }
+        }
+        stage('Docker_push:ECR'){
+           when { expression  { params.action == 'create'} }
+            steps{
+                script {
+                 DockerImagePush("${params.aws_account_ID}","${params.region}","${params.ecr_RepoName}") 
+                }
             }
         }
     }
